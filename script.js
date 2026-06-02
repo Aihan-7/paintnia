@@ -41,6 +41,10 @@
     const msgEl = intro.querySelector(".intro-message");
     const canvas = intro.querySelector(".intro-confetti");
     const muteBtn = intro.querySelector(".intro-mute");
+    const montage = intro.querySelector(".intro-montage");
+    const MONTAGE = ["1000089815.jpg", "1000090273.jpg", "1000090289.jpg", "1000091134.jpg", "1000091169.jpg"].map((f) => "assets/montage/" + f);
+    const PER = 3200; // ms each montage photo stays
+    let mtgTimer = null, mtgEnded = false;
 
     nameEl.textContent = INTRO.name;
     preEl.textContent = INTRO.pre;
@@ -85,7 +89,41 @@
     };
 
     openBtn.addEventListener("click", openGift);
-    enterBtn.addEventListener("click", finish);
+
+    // "step inside" runs away a few times, then lets her catch it → opens the montage
+    let dodges = 0, caught = false;
+    const DODGES = 3;
+    const taunts = ["nope 😝", "too slow, granny!", "ok fine… catch me 🥹"];
+    const dodge = () => {
+      const pad = 16;
+      const r = enterBtn.getBoundingClientRect();
+      const bw = r.width, bh = r.height;
+      if (enterBtn.style.position !== "fixed") {
+        enterBtn.style.margin = "0";
+        enterBtn.style.position = "fixed";
+        enterBtn.style.left = r.left + "px";
+        enterBtn.style.top = r.top + "px";
+        void enterBtn.offsetWidth; // reflow so the first move glides too
+      }
+      dodges++;
+      enterBtn.textContent = taunts[Math.min(dodges, taunts.length) - 1];
+      if (dodges >= DODGES) {
+        caught = true;
+        enterBtn.classList.add("caught");
+        enterBtn.style.left = Math.max(pad, (window.innerWidth - bw) / 2) + "px";
+        enterBtn.style.top = window.innerHeight * 0.6 + "px";
+      } else {
+        enterBtn.style.left = pad + Math.random() * Math.max(1, window.innerWidth - bw - pad * 2) + "px";
+        enterBtn.style.top = window.innerHeight * 0.22 + Math.random() * Math.max(1, window.innerHeight * 0.5 - bh) + "px";
+      }
+    };
+    if (prefersReduced) {
+      enterBtn.addEventListener("click", openMontage);
+    } else {
+      enterBtn.addEventListener("pointerdown", (e) => { if (!caught) { e.preventDefault(); dodge(); } });
+      enterBtn.addEventListener("click", (e) => { if (!caught) { e.preventDefault(); return; } openMontage(); });
+    }
+
     if (muteBtn) muteBtn.addEventListener("click", () => {
       muted = !muted;
       muteBtn.classList.toggle("muted", muted);
@@ -116,6 +154,7 @@
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
+        if (audioCtx) { try { audioCtx.close(); } catch (e2) {} }
         audioCtx = new AC();
         if (audioCtx.state === "suspended") audioCtx.resume();
         masterGain = audioCtx.createGain();
@@ -177,6 +216,69 @@
         else ctx.clearRect(0, 0, W, H);
       };
       confettiRAF = requestAnimationFrame(frame);
+    }
+
+    /* ---- goofy-pics montage ---- */
+    function openMontage() {
+      if (!montage) { finish(); return; }
+      showStage.classList.remove("in");
+      showStage.hidden = true;
+      montage.hidden = false;
+      requestAnimationFrame(() => montage.classList.add("in"));
+      playMusic(); // fresh swell for the montage
+      buildMontage();
+    }
+
+    function buildMontage() {
+      const stage = montage.querySelector(".mtg-stage");
+      const dotsWrap = montage.querySelector(".mtg-dots");
+      const hint = montage.querySelector(".mtg-hint");
+      const enter = montage.querySelector(".mtg-enter");
+      stage.innerHTML = "";
+      dotsWrap.innerHTML = "";
+      MONTAGE.forEach((src, i) => {
+        const slide = document.createElement("div");
+        slide.className = "mtg-slide";
+        const bg = document.createElement("div");
+        bg.className = "mtg-bg";
+        bg.style.backgroundImage = "url('" + src + "')";
+        const img = document.createElement("img");
+        img.className = "mtg-img";
+        img.src = src;
+        img.alt = "";
+        img.loading = i < 2 ? "eager" : "lazy";
+        slide.append(bg, img);
+        stage.appendChild(slide);
+        const dot = document.createElement("span");
+        dot.className = "mtg-dot";
+        dotsWrap.appendChild(dot);
+      });
+      const slides = Array.from(stage.querySelectorAll(".mtg-slide"));
+      const dots = Array.from(dotsWrap.querySelectorAll(".mtg-dot"));
+      let current = -1;
+      const endMontage = () => {
+        if (mtgEnded) return;
+        mtgEnded = true;
+        clearTimeout(mtgTimer);
+        if (hint) hint.hidden = true;
+        enter.hidden = false;
+        requestAnimationFrame(() => enter.classList.add("in"));
+        enter.addEventListener("click", finish, { once: true });
+      };
+      const go = (i) => {
+        if (i >= slides.length) { endMontage(); return; }
+        current = i;
+        slides.forEach((s, k) => s.classList.toggle("show", k === i));
+        dots.forEach((d, k) => d.classList.toggle("active", k === i));
+        clearTimeout(mtgTimer);
+        mtgTimer = setTimeout(() => go(i + 1), PER);
+      };
+      montage.addEventListener("click", (e) => {
+        if (e.target.closest(".mtg-enter") || mtgEnded) return;
+        clearTimeout(mtgTimer);
+        go(current + 1);
+      });
+      go(0);
     }
   })();
 
