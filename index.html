@@ -29,12 +29,52 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      // Birthday reveal: the cinematic intro only plays when the site is opened
+      // via the secret link  paintnia.shop/?gift  — so regular shop visitors never see it.
+      (function () {
+        try {
+          if (/(?:[?&]|#)gift\b/i.test(location.search + location.hash)) {
+            document.documentElement.classList.add("show-intro");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- soft drifting sparkles + petals are injected here by script.js -->
     <div class="ambient-layer" aria-hidden="true"></div>
 
     <a class="skip-link" href="#top">Skip to content</a>
+
+    <!-- ===== First-open cinematic surprise (only via the secret ?gift link) ===== -->
+    <div id="intro" role="dialog" aria-label="A birthday surprise for Nia">
+      <canvas class="intro-confetti" aria-hidden="true"></canvas>
+      <button class="intro-mute" type="button" aria-label="Mute or unmute music" hidden>♪</button>
+
+      <section class="intro-gate">
+        <span class="intro-gift" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="118" height="118" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="11" y="27" width="42" height="29" rx="4" />
+            <path d="M9 27h46v8H9z" />
+            <path d="M32 27v29" />
+            <path d="M32 27c-6-2-15-3-15-10 0-4 5-6 8-3 4 4 7 13 7 13zM32 27c6-2 15-3 15-10 0-4-5-6-8-3-4 4-7 13-7 13z" />
+          </svg>
+        </span>
+        <p class="intro-kicker">psst… is this Aysha?</p>
+        <h2>someone made you<br />something special</h2>
+        <button class="intro-open" type="button">tap to open ✦</button>
+        <p class="intro-sound-hint">♪ turn your sound on for the full feels</p>
+      </section>
+
+      <section class="intro-show" hidden>
+        <span class="intro-burst" aria-hidden="true"></span>
+        <p class="intro-pre">happy birthday</p>
+        <h1 class="intro-name">Nia</h1>
+        <div class="intro-message"></div>
+        <button class="intro-enter" type="button" hidden>step inside ✦</button>
+      </section>
+    </div>
 
     <div class="page-shell">
       <header class="top-banner">

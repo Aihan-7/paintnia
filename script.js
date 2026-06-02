@@ -12,6 +12,174 @@
   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
+  /* ---------- first-open cinematic surprise ---------- */
+  (() => {
+    const root = document.documentElement;
+    const intro = document.getElementById("intro");
+    if (!intro) return;
+    if (!root.classList.contains("show-intro")) { intro.remove(); return; }
+
+    /* ===== EDIT THIS to personalize the message =====================
+       Change the name and the lines below to whatever you want to say. */
+    const INTRO = {
+      pre: "happy birthday",
+      name: "Nia",
+      lines: [
+        "the world deserves to see what you make.",
+        "so I made you a little home for it —",
+        "all yours. happy birthday, Aysha 💛",
+      ],
+    };
+    /* ================================================================ */
+
+    const gate = intro.querySelector(".intro-gate");
+    const showStage = intro.querySelector(".intro-show");
+    const openBtn = intro.querySelector(".intro-open");
+    const enterBtn = intro.querySelector(".intro-enter");
+    const nameEl = intro.querySelector(".intro-name");
+    const preEl = intro.querySelector(".intro-pre");
+    const msgEl = intro.querySelector(".intro-message");
+    const canvas = intro.querySelector(".intro-confetti");
+    const muteBtn = intro.querySelector(".intro-mute");
+
+    nameEl.textContent = INTRO.name;
+    preEl.textContent = INTRO.pre;
+
+    let audioCtx = null, masterGain = null, muted = false, confettiRAF = null, opened = false;
+    const MASTER_VOL = 0.16;
+    const vibrate = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+    const finish = () => {
+      try { localStorage.setItem("nia_intro_v1", "1"); } catch (e) {}
+      intro.classList.add("intro-closing");
+      if (confettiRAF) cancelAnimationFrame(confettiRAF);
+      if (audioCtx) { try { audioCtx.close(); } catch (e) {} }
+      setTimeout(() => { root.classList.remove("show-intro"); intro.remove(); }, 850);
+    };
+
+    const openGift = () => {
+      if (opened) return;
+      opened = true;
+      openBtn.disabled = true;
+      vibrate([0, 45, 60, 45, 90, 30]);
+      gate.classList.add("gone");
+      showStage.hidden = false;
+      requestAnimationFrame(() => showStage.classList.add("in"));
+      if (!prefersReduced) startConfetti();
+      playMusic();
+      setTimeout(() => vibrate([0, 25, 35, 25]), 650);
+
+      INTRO.lines.forEach((t, i) => {
+        const p = document.createElement("p");
+        p.className = "intro-line";
+        p.textContent = t;
+        p.style.animationDelay = (1.2 + i * 0.95) + "s";
+        msgEl.appendChild(p);
+      });
+      const enterDelay = (1.2 + INTRO.lines.length * 0.95 + 0.9) * 1000;
+      setTimeout(() => {
+        enterBtn.hidden = false;
+        requestAnimationFrame(() => enterBtn.classList.add("in"));
+      }, enterDelay);
+      if (muteBtn) muteBtn.hidden = false;
+    };
+
+    openBtn.addEventListener("click", openGift);
+    enterBtn.addEventListener("click", finish);
+    if (muteBtn) muteBtn.addEventListener("click", () => {
+      muted = !muted;
+      muteBtn.classList.toggle("muted", muted);
+      if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(muted ? 0 : MASTER_VOL, audioCtx.currentTime, 0.02);
+    });
+    // safety: Esc closes
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && root.classList.contains("show-intro")) finish(); });
+
+    /* ---- soft K-ballad style melody (original, royal-road progression) ---- */
+    const A4 = 440;
+    const STEP = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+    const freq = (n) => {
+      const name = n.slice(0, -1), oct = +n.slice(-1);
+      const midi = (oct + 1) * 12 + STEP[name];
+      return A4 * Math.pow(2, (midi - 69) / 12);
+    };
+    function note(f, start, dur, vol, type) {
+      const o = audioCtx.createOscillator(); o.type = type || "triangle"; o.frequency.value = f;
+      const h = audioCtx.createOscillator(); h.type = "sine"; h.frequency.value = f * 2;
+      const g = audioCtx.createGain(), hg = audioCtx.createGain(); hg.gain.value = 0.22;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0006, start + dur);
+      o.connect(g); h.connect(hg); hg.connect(g); g.connect(masterGain);
+      o.start(start); h.start(start); o.stop(start + dur + 0.12); h.stop(start + dur + 0.12);
+    }
+    function playMusic() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = muted ? 0 : MASTER_VOL;
+        masterGain.connect(audioCtx.destination);
+        // IVmaj7 - V7 - iiim7 - vim7 (the dreamy K-ballad / OST progression)
+        const prog = [
+          { bass: "F2", notes: ["F4", "A4", "C5", "E5"] },
+          { bass: "G2", notes: ["G4", "B4", "D5", "F5"] },
+          { bass: "E2", notes: ["E4", "G4", "B4", "D5"] },
+          { bass: "A2", notes: ["A4", "C5", "E5", "G5"] },
+        ];
+        const beat = 0.5, chordBeats = 4, loops = 4;
+        const arp = [0, 1, 2, 3, 2, 1, 0, 1];
+        let t = audioCtx.currentTime + 0.12;
+        for (let L = 0; L < loops; L++) {
+          prog.forEach((ch) => {
+            note(freq(ch.bass), t, chordBeats * beat * 0.96, 0.5, "sine");
+            arp.forEach((idx, k) => note(freq(ch.notes[idx]), t + k * (beat / 2), beat * 0.95, 0.3, "triangle"));
+            t += chordBeats * beat;
+          });
+        }
+      } catch (e) {}
+    }
+
+    /* ---- confetti ---- */
+    function startConfetti() {
+      const ctx = canvas.getContext && canvas.getContext("2d");
+      if (!ctx) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const resize = () => { canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+      resize();
+      window.addEventListener("resize", resize, { once: true });
+      const W = innerWidth, H = innerHeight;
+      const colors = ["#f38eb2", "#ffbe73", "#e7b53c", "#fff3c4", "#afd8d1", "#cbe8ef", "#ddd5ff", "#ffffff"];
+      const pieces = [];
+      const wave = (cx, cy, n, power) => {
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2, sp = Math.random() * power + 4;
+          pieces.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 6, size: 5 + Math.random() * 8, color: colors[(Math.random() * colors.length) | 0], rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.35, shape: Math.random() > 0.5 ? "rect" : "circ" });
+        }
+      };
+      wave(W / 2, H * 0.46, 170, 13);
+      setTimeout(() => wave(W * 0.18, H * 0.62, 80, 12), 650);
+      setTimeout(() => wave(W * 0.82, H * 0.62, 80, 12), 1050);
+      const start = performance.now();
+      const frame = (now) => {
+        const el = now - start;
+        ctx.clearRect(0, 0, W, H);
+        pieces.forEach((p) => {
+          p.vy += 0.3; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.rot += p.vr;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.globalAlpha = clamp(1 - el / 5800, 0, 1); ctx.fillStyle = p.color;
+          if (p.shape === "rect") ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, 7); ctx.fill(); }
+          ctx.restore();
+        });
+        if (el < 6000 && root.classList.contains("show-intro")) confettiRAF = requestAnimationFrame(frame);
+        else ctx.clearRect(0, 0, W, H);
+      };
+      confettiRAF = requestAnimationFrame(frame);
+    }
+  })();
+
   /* ---------- cloud client (optional) ---------- */
   const cfg = window.NIA_CONFIG || {};
   const cloudReady = !!(
