@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studio · thepaint.nia</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#fff9f3" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Caveat:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #3e3450; --muted: #7f7092; --rose: #f38eb2; --rose-deep: #ca5c8b;
+        --apricot: #ffbe73; --gold: #c8972f; --gold-deep: #a9791c;
+        --line: rgba(180, 156, 199, 0.28); --card: rgba(255, 255, 255, 0.9);
+        --radius: 22px; --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      body {
+        margin: 0; font-family: "DM Sans", system-ui, sans-serif; color: var(--ink); line-height: 1.5;
+        background:
+          radial-gradient(circle at top left, rgba(255, 206, 214, 0.85), transparent 30%),
+          radial-gradient(circle at 92% 6%, rgba(203, 232, 239, 0.9), transparent 24%),
+          linear-gradient(180deg, #fffefc, #fff6ef 60%, #fdf4ef);
+        background-attachment: fixed; min-height: 100vh;
+      }
+      h1, h2, h3 { font-family: "Fraunces", serif; margin: 0; line-height: 1.12; }
+      a { color: var(--rose-deep); }
+      .wrap { width: min(640px, calc(100% - 28px)); margin: 0 auto; padding: 22px 0 70px; }
+      .hidden { display: none !important; }
+
+      .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .topbar .title h1 { font-size: 1.5rem; }
+      .topbar .title p { margin: 2px 0 0; color: var(--muted); font-size: 0.88rem; }
+      .topbar .spacer { flex: 1; }
+
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        border: 0; border-radius: 999px; padding: 14px 22px; font: inherit; font-weight: 700;
+        cursor: pointer; transition: transform 160ms var(--ease), box-shadow 160ms var(--ease), opacity 160ms;
+        text-decoration: none; min-height: 48px;
+      }
+      .btn:active { transform: scale(0.97); }
+      .btn-primary { background: linear-gradient(135deg, var(--rose), var(--apricot)); color: #fff; box-shadow: 0 14px 26px rgba(243, 142, 178, 0.3); width: 100%; }
+      .btn-ghost { background: rgba(255, 255, 255, 0.9); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+      .btn-soft { background: #fff2f7; color: var(--rose-deep); }
+      .btn-sm { padding: 9px 14px; font-size: 0.85rem; min-height: 0; }
+      .btn[disabled] { opacity: 0.55; cursor: progress; }
+
+      .panel { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: inset 0 0 0 1px rgba(244, 214, 223, 0.6); backdrop-filter: blur(10px); margin-bottom: 16px; }
+      .panel h2 { font-size: 1.2rem; margin-bottom: 4px; }
+      .panel .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 16px; }
+
+      label.field { display: block; margin-bottom: 14px; font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+      label.field small { font-weight: 400; }
+      input[type="text"], input[type="email"], input[type="password"], textarea, select {
+        width: 100%; margin-top: 6px; padding: 13px 15px; border: 1px solid var(--line);
+        border-radius: 14px; background: #fff; font: inherit; color: var(--ink);
+        transition: border-color 160ms, box-shadow 160ms;
+      }
+      textarea { resize: vertical; min-height: 72px; }
+      input:focus, textarea:focus, select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 151, 47, 0.16); }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+      .drop {
+        position: relative; display: grid; place-items: center; text-align: center; gap: 6px;
+        min-height: 190px; margin-top: 6px; padding: 18px; border: 2px dashed rgba(200, 151, 47, 0.5);
+        border-radius: 16px; background: linear-gradient(135deg, #fff7ef, #fff0f6); cursor: pointer;
+        transition: border-color 160ms, background 160ms; overflow: hidden;
+      }
+      .drop.over { border-color: var(--rose); background: #fff4fa; }
+      .drop .hint strong { color: var(--rose-deep); }
+      .drop .hint small { color: var(--muted); }
+      .drop img { max-width: 100%; max-height: 260px; border-radius: 12px; box-shadow: 0 10px 24px rgba(96, 72, 86, 0.16); }
+      .drop .badge { position: absolute; bottom: 8px; right: 8px; background: rgba(62,52,80,0.8); color: #fff; font-size: 0.72rem; padding: 4px 10px; border-radius: 999px; }
+      .drop input[type="file"] { display: none; }
+
+      .form-actions { display: flex; gap: 10px; margin-top: 4px; }
+      .form-actions .btn-primary { width: auto; flex: 1; }
+      .status-msg { min-height: 1.2em; font-weight: 600; font-size: 0.9rem; color: var(--rose-deep); margin-top: 10px; }
+
+      .list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+      .list-head .count { color: var(--muted); font-size: 0.9rem; }
+      .pieces { display: flex; flex-direction: column; gap: 12px; }
+      .piece {
+        display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center;
+        padding: 10px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .piece.sold { opacity: 0.65; }
+      .piece .thumb { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; background: #f7ede9; }
+      .piece .meta strong { display: block; font-family: "Fraunces", serif; font-size: 1rem; }
+      .piece .meta small { color: var(--muted); display: block; font-size: 0.82rem; }
+      .piece .tag { display: inline-block; margin-top: 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold-deep); font-weight: 700; }
+      .piece .tag.sold-tag { color: #c0436a; }
+      .piece .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+      .icon-btn {
+        width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 11px;
+        cursor: pointer; background: #fff2f7; color: var(--rose-deep); transition: background 150ms, transform 150ms;
+      }
+      .icon-btn svg { width: 18px; height: 18px; }
+      .icon-btn:active { transform: scale(0.92); }
+      .icon-btn.del { background: #fdeef2; color: #c0436a; }
+      .icon-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+      .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+      /* login + setup */
+      .center-card { max-width: 420px; margin: 8vh auto 0; text-align: center; }
+      .center-card .logo { width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 20px;
+        background: radial-gradient(circle at 30% 30%, #fff 0 10%, transparent 11%), radial-gradient(circle at 62% 35%, #fff0b5 0 14%, transparent 15%), radial-gradient(circle at 48% 58%, #f4a6c2 0 24%, transparent 25%), #ffcdd2;
+        box-shadow: inset 0 0 0 6px rgba(255,255,255,0.4); }
+      .center-card h1 { font-size: 1.8rem; margin-bottom: 6px; }
+      .center-card .sub { color: var(--muted); margin: 0 0 20px; }
+      .center-card label.field { text-align: left; }
+      .setup ol { text-align: left; line-height: 1.7; padding-left: 22px; }
+      .setup code { background: #fff2f7; padding: 2px 7px; border-radius: 6px; font-size: 0.9em; }
+
+      .toast {
+        position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+        background: var(--ink); color: #fff; padding: 13px 22px; border-radius: 999px;
+        box-shadow: 0 14px 30px rgba(62,52,80,0.35); opacity: 0; pointer-events: none;
+        transition: opacity 240ms var(--ease), transform 240ms var(--ease); font-weight: 600; z-index: 50; max-width: 90vw; text-align: center;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      .toast.err { background: #b03a5e; }
+
+      .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.5); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- ===== SETUP NEEDED (cloud not configured yet) ===== -->
+      <section id="screen-setup" class="panel setup center-card hidden">
+        <div class="logo"></div>
+        <h1>Almost there!</h1>
+        <p class="sub">The cloud isn't connected yet. (This message is just for whoever set up the site.)</p>
+        <ol>
+          <li>Follow <code>SETUP.md</code> to create a free Supabase project.</li>
+          <li>Paste your two keys into <code>config.js</code>.</li>
+          <li>Reload this page — you'll get a login screen.</li>
+        </ol>
+      </section>
+
+      <!-- ===== LOGIN ===== -->
+      <section id="screen-login" class="panel center-card hidden">
+        <div class="logo"></div>
+        <h1>Welcome back, Nia 💛</h1>
+        <p class="sub">Log in to add or manage your art.</p>
+        <form id="login-form">
+          <label class="field">Username
+            <input type="text" id="login-user" autocomplete="username" placeholder="e.g. nia" required />
+          </label>
+          <label class="field">Password
+            <input type="password" id="login-pass" autocomplete="current-password" required />
+          </label>
+          <button class="btn btn-primary" type="submit" id="login-btn">Log in</button>
+          <p class="status-msg" id="login-msg" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <!-- ===== APP ===== -->
+      <div id="screen-app" class="hidden">
+        <div class="topbar">
+          <div class="title">
+            <h1>🎨 Your Art Studio</h1>
+            <p>Add a photo, give it a title, tap save — it goes live right away.</p>
+          </div>
+          <div class="spacer"></div>
+          <a class="btn btn-ghost btn-sm" href="index.html" target="_blank" rel="noopener">View site ↗</a>
+          <button class="btn btn-soft btn-sm" id="logout">Log out</button>
+        </div>
+
+        <section class="panel">
+          <h2 id="form-title">Add a new piece</h2>
+          <p class="sub">Photos are shrunk automatically so your site stays fast.</p>
+
+          <div class="drop" id="drop" role="button" tabindex="0" aria-label="Add a photo of your artwork">
+            <input type="file" id="file" accept="image/*" />
+            <div class="hint" id="dropHint">
+              <strong>Tap to add a photo</strong><br />
+              <small>or drop one here · JPG or PNG</small>
+            </div>
+          </div>
+
+          <div style="margin-top:16px"></div>
+          <label class="field">Title
+            <input type="text" id="title" placeholder="e.g. Golden Poppies" />
+          </label>
+          <label class="field">Medium / details
+            <input type="text" id="medium" placeholder="e.g. Acrylic + gold leaf on canvas" />
+          </label>
+          <label class="field">Description
+            <textarea id="description" placeholder="A short, lovely sentence about this piece…"></textarea>
+          </label>
+          <div class="row">
+            <label class="field">Price <small>(optional)</small>
+              <input type="text" id="price" placeholder="e.g. $120" />
+            </label>
+            <label class="field">Status
+              <select id="status">
+                <option value="available">Available</option>
+                <option value="sold">Sold</option>
+              </select>
+            </label>
+          </div>
+          <label class="field">Show it under
+            <select id="section">
+              <option value="collection">Collection (main gallery)</option>
+              <option value="sketchbook">Sketchbook</option>
+            </select>
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="save">＋ Add piece</button>
+            <button class="btn btn-ghost hidden" id="cancel">Cancel</button>
+          </div>
+          <p class="status-msg" id="msg" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <div class="list-head">
+            <h2>Your pieces</h2>
+            <span class="count" id="count">…</span>
+          </div>
+          <div class="pieces" id="pieces"></div>
+        </section>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+      (() => {
+        "use strict";
+        const MAX_DIM = 1500, QUALITY = 0.82;
+        const $ = (s) => document.querySelector(s);
+        const show = (id) => { ["screen-setup", "screen-login", "screen-app"].forEach((s) => $("#" + s).classList.toggle("hidden", s !== id)); };
+
+        // icons
+        const IC = {
+          up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+          down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>',
+          edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+          del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>'
+        };
+
+        // ---------- config / client ----------
+        const cfg = window.NIA_CONFIG || {};
+        const configured = cfg.supabaseUrl && cfg.supabaseAnonKey && !/YOUR-PROJECT|YOUR-ANON/.test(cfg.supabaseUrl + cfg.supabaseAnonKey);
+        if (!configured || !window.supabase) { show("screen-setup"); return; }
+        const supa = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+        // Nia logs in with a simple username; Supabase needs an email, so we add a fixed
+        // domain behind the scenes (username "nia" -> "nia@thepaint.art"). If she ever types
+        // a full email, we use it as-is.
+        const LOGIN_DOMAIN = String(cfg.loginDomain || "thepaint.art").replace(/^@/, "");
+        const toEmail = (u) => {
+          u = (u || "").trim().toLowerCase();
+          return !u ? "" : (u.includes("@") ? u : u + "@" + LOGIN_DOMAIN);
+        };
+
+        let pieces = [];
+        let pendingBlob = null;     // newly chosen image (Blob) waiting to be saved
+        let editingId = null;       // id of the piece being edited
+        let editingImage = "";      // existing image_url while editing
+        let busy = false;
+
+        // ---------- helpers ----------
+        function toast(text, isErr) {
+          const t = $("#toast");
+          t.textContent = text; t.classList.toggle("err", !!isErr); t.classList.add("show");
+          clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 3400);
+        }
+        function setBusy(btn, on, labelBusy) {
+          busy = on;
+          if (!btn) return;
+          if (on) { btn._label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>' + (labelBusy ? " " + labelBusy : ""); }
+          else { btn.disabled = false; if (btn._label) btn.innerHTML = btn._label; }
+        }
+
+        // ---------- image compression ----------
+        function compress(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                let { width, height } = img;
+                if (width > height && width > MAX_DIM) { height = Math.round((height * MAX_DIM) / width); width = MAX_DIM; }
+                else if (height >= width && height > MAX_DIM) { width = Math.round((width * MAX_DIM) / height); height = MAX_DIM; }
+                const c = document.createElement("canvas"); c.width = width; c.height = height;
+                const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                c.toBlob((blob) => blob ? resolve(blob) : reject(new Error("blob")), "image/jpeg", QUALITY);
+              };
+              img.onerror = reject; img.src = reader.result;
+            };
+            reader.onerror = reject; reader.readAsDataURL(file);
+          });
+        }
+        async function handleFile(file) {
+          if (!file || !file.type.startsWith("image/")) { toast("Please choose an image file.", true); return; }
+          $("#dropHint") && ($("#dropHint").innerHTML = "<small>Processing…</small>");
+          try {
+            pendingBlob = await compress(file);
+            const url = URL.createObjectURL(pendingBlob);
+            $("#drop").innerHTML = '<img alt="preview" src="' + url + '"><span class="badge">' + Math.round(pendingBlob.size / 1024) + " KB</span>";
+            if (!$("#title").value) $("#title").focus();
+          } catch (e) { toast("Couldn't read that image. Try another.", true); resetDrop(); }
+        }
+        function resetDrop() {
+          $("#drop").innerHTML = '<input type="file" id="file" accept="image/*"><div class="hint" id="dropHint"><strong>Tap to add a photo</strong><br><small>or drop one here · JPG or PNG</small></div>';
+          wireDrop();
+        }
+
+        // ---------- storage ----------
+        async function uploadImage(blob) {
+          const name = Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".jpg";
+          const { error } = await supa.storage.from("art").upload(name, blob, { contentType: "image/jpeg", cacheControl: "3600", upsert: false });
+          if (error) throw error;
+          return supa.storage.from("art").getPublicUrl(name).data.publicUrl;
+        }
+        async function deleteImage(url) {
+          try {
+            const marker = "/art/";
+            const i = (url || "").indexOf(marker);
+            if (i === -1) return; // not one of our uploads (e.g. a starter asset path)
+            const path = decodeURIComponent(url.slice(i + marker.length).split("?")[0]);
+            await supa.storage.from("art").remove([path]);
+          } catch (e) {}
+        }
+
+        // ---------- data ----------
+        async function loadPieces() {
+          const { data, error } = await supa.from("pieces").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+          if (error) { toast("Couldn't load your pieces.", true); return; }
+          pieces = data || []; render();
+        }
+        function nextOrder() { return pieces.length ? Math.max(...pieces.map((p) => p.sort_order || 0)) + 1 : 1; }
+
+        async function savePiece() {
+          if (busy) return;
+          const title = $("#title").value.trim();
+          if (!pendingBlob && !editingId) { $("#msg").textContent = "Please add a photo of the piece."; return; }
+          if (!title) { $("#msg").textContent = "Please give it a title."; $("#title").focus(); return; }
+          $("#msg").textContent = "";
+          const btn = $("#save"); setBusy(btn, true, "Saving");
+          try {
+            let imageUrl = editingImage;
+            if (pendingBlob) imageUrl = await uploadImage(pendingBlob);
+            const payload = {
+              title, medium: $("#medium").value.trim(), description: $("#description").value.trim(),
+              image_url: imageUrl, price: $("#price").value.trim(), status: $("#status").value, section: $("#section").value
+            };
+            if (editingId) {
+              const { error } = await supa.from("pieces").update(payload).eq("id", editingId);
+              if (error) throw error; toast("Updated ✓");
+            } else {
+              payload.sort_order = nextOrder();
+              const { error } = await supa.from("pieces").insert(payload);
+              if (error) throw error; toast("Added — it's live! ✨");
+            }
+            resetForm(); await loadPieces();
+          } catch (e) { toast("Save failed: " + (e.message || "try again"), true); }
+          finally { setBusy(btn, false); }
+        }
+
+        async function removePiece(p) {
+          if (busy) return;
+          if (!confirm('Delete "' + (p.title || "this piece") + '"? This can\'t be undone.')) return;
+          busy = true;
+          try {
+            const { error } = await supa.from("pieces").delete().eq("id", p.id);
+            if (error) throw error;
+            await deleteImage(p.image_url);
+            if (editingId === p.id) resetForm();
+            toast("Deleted.");
+            await loadPieces();
+          } catch (e) { toast("Couldn't delete that.", true); }
+          finally { busy = false; }
+        }
+
+        async function move(i, dir) {
+          if (busy) return;
+          const j = i + dir; if (j < 0 || j >= pieces.length) return;
+          const a = pieces[i], b = pieces[j];
+          const ao = a.sort_order || 0, bo = b.sort_order || 0;
+          busy = true;
+          try {
+            await supa.from("pieces").update({ sort_order: bo }).eq("id", a.id);
+            await supa.from("pieces").update({ sort_order: ao }).eq("id", b.id);
+            await loadPieces();
+          } catch (e) { toast("Couldn't reorder.", true); }
+          finally { busy = false; }
+        }
+
+        function startEdit(p) {
+          editingId = p.id; editingImage = p.image_url || ""; pendingBlob = null;
+          $("#title").value = p.title || ""; $("#medium").value = p.medium || "";
+          $("#description").value = p.description || ""; $("#price").value = p.price || "";
+          $("#status").value = p.status === "sold" ? "sold" : "available";
+          $("#section").value = p.section === "sketchbook" ? "sketchbook" : "collection";
+          $("#drop").innerHTML = '<img alt="preview" src="' + (editingImage || "") + '"><span class="badge">tap to replace</span>';
+          $("#drop").addEventListener("click", () => resetDrop(), { once: true });
+          $("#form-title").textContent = "Edit piece";
+          $("#save").innerHTML = "✓ Save changes";
+          $("#cancel").classList.remove("hidden");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        function resetForm() {
+          editingId = null; editingImage = ""; pendingBlob = null;
+          ["title", "medium", "description", "price"].forEach((id) => ($("#" + id).value = ""));
+          $("#status").value = "available"; $("#section").value = "collection";
+          resetDrop();
+          $("#form-title").textContent = "Add a new piece";
+          $("#save").innerHTML = "＋ Add piece";
+          $("#cancel").classList.add("hidden");
+          $("#msg").textContent = "";
+        }
+
+        // ---------- render list ----------
+        function render() {
+          const box = $("#pieces");
+          $("#count").textContent = pieces.length + (pieces.length === 1 ? " piece" : " pieces");
+          if (!pieces.length) { box.innerHTML = '<div class="empty">No pieces yet.<br>Add your first one above! ✦</div>'; return; }
+          box.innerHTML = "";
+          pieces.forEach((p, i) => {
+            const row = document.createElement("div");
+            row.className = "piece" + (p.status === "sold" ? " sold" : "");
+            const img = document.createElement("img"); img.className = "thumb"; img.src = p.image_url || ""; img.alt = "";
+            const meta = document.createElement("div"); meta.className = "meta";
+            const strong = document.createElement("strong"); strong.textContent = p.title || "Untitled";
+            const small = document.createElement("small"); small.textContent = p.medium || "";
+            const tag = document.createElement("span");
+            tag.className = "tag" + (p.status === "sold" ? " sold-tag" : "");
+            tag.textContent = (p.section === "sketchbook" ? "Sketchbook" : "Collection") + (p.status === "sold" ? " · Sold" : (p.price ? " · " + p.price : ""));
+            meta.append(strong, small, tag);
+            const controls = document.createElement("div"); controls.className = "controls";
+            const up = iconBtn(IC.up, "Move up", () => move(i, -1)); up.disabled = i === 0;
+            const down = iconBtn(IC.down, "Move down", () => move(i, 1)); down.disabled = i === pieces.length - 1;
+            const edit = iconBtn(IC.edit, "Edit", () => startEdit(p));
+            const del = iconBtn(IC.del, "Delete", () => removePiece(p)); del.classList.add("del");
+            controls.append(up, down, edit, del);
+            row.append(img, meta, controls);
+            box.appendChild(row);
+          });
+        }
+        function iconBtn(svg, title, onClick) {
+          const b = document.createElement("button");
+          b.className = "icon-btn"; b.type = "button"; b.title = title; b.setAttribute("aria-label", title);
+          b.innerHTML = svg; b.addEventListener("click", onClick);
+          return b;
+        }
+
+        // ---------- drop wiring ----------
+        function wireDrop() {
+          const drop = $("#drop"), file = $("#file");
+          if (!drop) return;
+          drop.addEventListener("click", (e) => { if (e.target.tagName !== "INPUT") file && file.click(); });
+          drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file && file.click(); } });
+          if (file) file.addEventListener("change", (e) => e.target.files[0] && handleFile(e.target.files[0]));
+          ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+          ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+          drop.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+        }
+
+        // ---------- auth ----------
+        async function enterApp() { show("screen-app"); wireDrop(); await loadPieces(); }
+
+        $("#login-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = $("#login-btn"); $("#login-msg").textContent = ""; setBusy(btn, true, "Logging in");
+          const { error } = await supa.auth.signInWithPassword({ email: toEmail($("#login-user").value), password: $("#login-pass").value });
+          setBusy(btn, false);
+          if (error) { $("#login-msg").textContent = "Hmm, that didn't work. Check your username & password."; return; }
+          enterApp();
+        });
+        $("#logout").addEventListener("click", async () => { await supa.auth.signOut(); show("screen-login"); });
+
+        // form buttons
+        $("#save").addEventListener("click", savePiece);
+        $("#cancel").addEventListener("click", resetForm);
+
+        // ---------- boot ----------
+        (async () => {
+          const { data } = await supa.auth.getSession();
+          if (data && data.session) enterApp(); else show("screen-login");
+        })();
+      })();
+    </script>
+  </body>
+</html>

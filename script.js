@@ -1,0 +1,438 @@
+/* =========================================================
+   thepaint.nia — interactions
+   Gallery loads live from Supabase when configured,
+   and falls back to gallery.js / static cards otherwise.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+  /* ---------- cloud client (optional) ---------- */
+  const cfg = window.NIA_CONFIG || {};
+  const cloudReady = !!(
+    cfg.supabaseUrl &&
+    cfg.supabaseAnonKey &&
+    !/YOUR-PROJECT|YOUR-ANON/.test(cfg.supabaseUrl + cfg.supabaseAnonKey) &&
+    window.supabase
+  );
+  let supa = null;
+  try { if (cloudReady) supa = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey); } catch (e) {}
+
+  const normalize = (p) => ({
+    title: p.title || "Untitled",
+    medium: p.medium || "",
+    description: p.description || "",
+    image: p.image_url || p.image || "",
+    price: p.price || "",
+    status: p.status === "sold" ? "sold" : "available",
+    section: p.section === "sketchbook" ? "sketchbook" : "collection"
+  });
+
+  /* ---------- card builder ---------- */
+  const ZOOM = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg>';
+
+  function makeCard(piece, kind) {
+    const isSketch = kind === "sketchbook";
+    const article = document.createElement("article");
+    article.className = isSketch ? "sketchbook-card" : "product-card";
+    if (piece.status === "sold") article.classList.add("is-sold");
+    article.setAttribute("data-reveal", "");
+    article.setAttribute("data-tilt", "");
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "art-trigger";
+    btn.setAttribute("data-lightbox", "");
+    btn.dataset.src = piece.image || "";
+    btn.dataset.title = piece.title || "";
+    btn.dataset.medium = piece.medium || "";
+    btn.dataset.desc = piece.description || "";
+    btn.setAttribute("aria-label", "View " + (piece.title || "artwork") + " full size");
+
+    const img = document.createElement("img");
+    img.className = "art-image " + (isSketch ? "sketchbook-image" : "gallery-image");
+    img.src = piece.image || "";
+    img.alt = (piece.title ? piece.title + " — " : "") + "artwork by thepaint.nia";
+    img.loading = "lazy";
+
+    const zoom = document.createElement("span");
+    zoom.className = "art-zoom";
+    zoom.setAttribute("aria-hidden", "true");
+    zoom.innerHTML = ZOOM;
+
+    btn.append(img, zoom);
+
+    if (piece.status === "sold") {
+      const badge = document.createElement("span");
+      badge.className = "sold-badge";
+      badge.textContent = "Sold";
+      btn.appendChild(badge);
+    }
+
+    const copy = document.createElement("div");
+    copy.className = "product-copy";
+    const h3 = document.createElement("h3");
+    h3.textContent = piece.title || "Untitled";
+    copy.appendChild(h3);
+    if (piece.description) {
+      const p = document.createElement("p");
+      p.textContent = piece.description;
+      copy.appendChild(p);
+    }
+    const meta = document.createElement("div");
+    meta.className = "piece-meta";
+    if (piece.medium) {
+      const strong = document.createElement("strong");
+      strong.textContent = piece.medium;
+      meta.appendChild(strong);
+    }
+    const price = document.createElement("span");
+    price.className = "price";
+    price.textContent = piece.status === "sold" ? "Sold" : (piece.price ? piece.price : "Enquire");
+    meta.appendChild(price);
+    copy.appendChild(meta);
+
+    article.append(btn, copy);
+    return article;
+  }
+
+  /* ---------- scroll reveal (re-usable for dynamic cards) ---------- */
+  let revealObserver = null;
+  function ensureObserver() {
+    if (revealObserver || prefersReduced || !("IntersectionObserver" in window)) return;
+    revealObserver = new IntersectionObserver(
+      (entries, obs) => {
+        entries.filter((e) => e.isIntersecting).forEach((entry, i) => {
+          entry.target.style.setProperty("--reveal-delay", Math.min(i, 6) * 80 + "ms");
+          entry.target.classList.add("is-visible");
+          obs.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.16, rootMargin: "0px 0px -40px 0px" }
+    );
+  }
+  function observeReveals(root = document) {
+    const nodes = $$("[data-reveal]", root).filter((n) => !n.dataset.obs);
+    if (prefersReduced || !("IntersectionObserver" in window)) {
+      nodes.forEach((n) => { n.classList.add("is-visible"); n.dataset.obs = "1"; });
+      return;
+    }
+    ensureObserver();
+    nodes.forEach((n) => { n.dataset.obs = "1"; revealObserver.observe(n); });
+  }
+
+  /* ---------- 3D tilt (re-usable for dynamic cards) ---------- */
+  function applyTilt(root = document) {
+    if (prefersReduced || !finePointer) return;
+    $$("[data-tilt]", root).filter((c) => !c.dataset.tilted).forEach((card) => {
+      card.dataset.tilted = "1";
+      const isHero = card.classList.contains("main-painting");
+      let raf = null, rx = 0, ry = 0;
+      const render = () => {
+        raf = null;
+        const base = isHero ? "rotate(2deg) " : "";
+        card.style.transform = base + "perspective(800px) rotateX(" + rx + "deg) rotateY(" + ry + "deg) translateZ(0)";
+      };
+      card.addEventListener("pointermove", (e) => {
+        const r = card.getBoundingClientRect();
+        ry = ((e.clientX - r.left) / r.width - 0.5) * 10;
+        rx = -((e.clientY - r.top) / r.height - 0.5) * 10;
+        if (!raf) raf = requestAnimationFrame(render);
+      });
+      card.addEventListener("pointerleave", () => {
+        if (raf) cancelAnimationFrame(raf), (raf = null);
+        card.style.transform = isHero ? "rotate(2deg)" : "";
+      });
+    });
+  }
+
+  /* ---------- render gallery from a list of pieces ---------- */
+  function renderGallery(pieces, animate) {
+    const fill = (grid, kind) => {
+      if (!grid) return 0;
+      const items = pieces.filter((p) => (p.section || "collection") === kind);
+      grid.innerHTML = "";
+      items.forEach((p) => grid.appendChild(makeCard(p, kind)));
+      return items.length;
+    };
+    fill($(".collection-grid"), "collection");
+    const sketchCount = fill($(".sketchbook-grid"), "sketchbook");
+    const sketchSection = $("#sketchbook");
+    if (sketchSection) sketchSection.hidden = sketchCount === 0;
+
+    if (animate) {
+      observeReveals();
+    } else {
+      $$(".collection-grid [data-reveal], .sketchbook-grid [data-reveal]").forEach((n) => {
+        n.classList.add("is-visible");
+        n.dataset.obs = "1";
+      });
+    }
+    applyTilt();
+  }
+
+  /* ---------- boot the gallery ---------- */
+  // 1) observe + tilt whatever is already in the page (hero, sections, static cards)
+  observeReveals();
+  applyTilt();
+  // 2) instant render from the offline list (gallery.js) so there is never a blank
+  if (Array.isArray(window.NIA_GALLERY) && window.NIA_GALLERY.length) {
+    renderGallery(window.NIA_GALLERY.map(normalize), true);
+  }
+  // 3) live render from the cloud if it's set up
+  (async () => {
+    if (!supa) return;
+    try {
+      const { data, error } = await supa
+        .from("pieces")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      if (Array.isArray(data)) renderGallery(data.map(normalize), false);
+    } catch (e) {
+      /* cloud unreachable → keep the offline fallback */
+    }
+  })();
+
+  /* ---------- sticky nav shadow ---------- */
+  (() => {
+    const nav = $(".site-nav");
+    if (!nav) return;
+    const onScroll = () => nav.classList.toggle("is-stuck", window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  })();
+
+  /* ---------- parallax (scroll + pointer) ---------- */
+  (() => {
+    if (prefersReduced) return;
+    const items = $$("[data-parallax]");
+    if (!items.length) return;
+    let mx = 0, my = 0, sy = 0, raf = null;
+    const apply = () => {
+      raf = null;
+      items.forEach((el) => {
+        const f = (parseFloat(el.dataset.parallax) || 12) / 30;
+        el.style.transform = "translate3d(" + mx * f * 0.6 + "px, " + (sy * -f + my * f * 0.6) + "px, 0)";
+      });
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    const hero = $(".hero");
+    if (hero && finePointer) {
+      hero.addEventListener("pointermove", (e) => {
+        const r = hero.getBoundingClientRect();
+        mx = ((e.clientX - r.left) / r.width - 0.5) * 24;
+        my = ((e.clientY - r.top) / r.height - 0.5) * 24;
+        schedule();
+      });
+      hero.addEventListener("pointerleave", () => { mx = 0; my = 0; schedule(); });
+    }
+    window.addEventListener("scroll", () => {
+      const h = $(".hero");
+      if (!h) return;
+      const rect = h.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < window.innerHeight) { sy = window.scrollY * 0.06; schedule(); }
+    }, { passive: true });
+  })();
+
+  /* ---------- magnetic buttons ---------- */
+  (() => {
+    if (prefersReduced || !finePointer) return;
+    $$("[data-magnetic]").forEach((btn) => {
+      btn.addEventListener("pointermove", (e) => {
+        const r = btn.getBoundingClientRect();
+        btn.style.transform = "translate(" + (e.clientX - r.left - r.width / 2) * 0.3 + "px, " + (e.clientY - r.top - r.height / 2) * 0.4 + "px)";
+      });
+      btn.addEventListener("pointerleave", () => { btn.style.transform = ""; });
+    });
+  })();
+
+  /* ---------- ambient sparkles + petals ---------- */
+  (() => {
+    if (prefersReduced) return;
+    const layer = $(".ambient-layer");
+    if (!layer) return;
+    const SPARK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 0l2.2 8.4L22 11l-7.8 2.6L12 22l-2.2-8.4L2 11l7.8-2.6z"/></svg>';
+    const PETAL = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C7 7 7 14 12 22 17 14 17 7 12 2z"/></svg>';
+    const count = window.innerWidth < 720 ? 9 : 16;
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement("span");
+      const isPetal = i % 3 === 0;
+      s.className = "spark" + (isPetal ? " petal" : "");
+      s.innerHTML = isPetal ? PETAL : SPARK;
+      const dur = 14 + Math.random() * 16;
+      s.style.left = Math.random() * 100 + "vw";
+      s.style.fontSize = (0.6 + Math.random() * 1.1) + "rem";
+      s.style.animationDuration = dur + "s";
+      s.style.animationDelay = -Math.random() * dur + "s";
+      s.style.setProperty("--drift", (Math.random() * 120 - 60) + "px");
+      s.style.setProperty("--peak", (0.35 + Math.random() * 0.5).toFixed(2));
+      layer.appendChild(s);
+    }
+  })();
+
+  /* ---------- lightbox gallery (event-delegated for dynamic cards) ---------- */
+  (() => {
+    const lb = $("#lightbox");
+    if (!lb) return;
+    const img = $(".lb-image", lb);
+    const titleEl = $(".lb-title", lb);
+    const mediumEl = $(".lb-medium", lb);
+    const descEl = $(".lb-desc", lb);
+    const closeBtn = $(".lb-close", lb);
+    const prevBtn = $(".lb-prev", lb);
+    const nextBtn = $(".lb-next", lb);
+    const cta = $(".lb-cta", lb);
+    let triggers = [], index = 0, lastFocus = null;
+
+    const render = () => {
+      const t = triggers[index];
+      if (!t) return;
+      img.src = t.dataset.src;
+      img.alt = t.dataset.title || "Artwork";
+      titleEl.textContent = t.dataset.title || "";
+      mediumEl.textContent = t.dataset.medium || "";
+      descEl.textContent = t.dataset.desc || "";
+    };
+    const open = (t) => {
+      triggers = $$("[data-lightbox]");
+      index = triggers.indexOf(t);
+      if (index < 0) index = 0;
+      lastFocus = document.activeElement;
+      render();
+      lb.hidden = false;
+      requestAnimationFrame(() => lb.classList.add("is-open"));
+      document.body.style.overflow = "hidden";
+      closeBtn.focus();
+    };
+    const close = () => {
+      lb.classList.remove("is-open");
+      document.body.style.overflow = "";
+      const done = () => { lb.hidden = true; lb.removeEventListener("transitionend", done); if (lastFocus) lastFocus.focus(); };
+      lb.addEventListener("transitionend", done);
+    };
+    const step = (d) => {
+      if (!triggers.length) return;
+      index = (index + d + triggers.length) % triggers.length;
+      img.style.opacity = "0";
+      setTimeout(() => { render(); img.style.opacity = "1"; }, 130);
+    };
+
+    document.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-lightbox]");
+      if (t) { e.preventDefault(); open(t); }
+    });
+    closeBtn.addEventListener("click", close);
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    cta.addEventListener("click", close);
+    lb.addEventListener("click", (e) => { if (e.target === lb) close(); });
+    document.addEventListener("keydown", (e) => {
+      if (lb.hidden) return;
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
+    });
+    img.style.transition = "opacity 130ms ease";
+  })();
+
+  /* ---------- contact form ---------- */
+  (() => {
+    const form = $(".contact-form");
+    if (!form) return;
+    const hint = $(".form-hint", form);
+    const button = form.querySelector('button[type="submit"]');
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = form.querySelector('input[name="email"]');
+      if (email && !email.checkValidity()) {
+        if (hint) hint.textContent = "Please add a valid email so I can reply 💌";
+        email.focus();
+        return;
+      }
+      if (!button) return;
+      const original = button.textContent;
+      button.textContent = "Sent — thank you!";
+      button.disabled = true;
+      if (hint) hint.textContent = "Got it! For the fastest reply, DM @thepaint.nia on Instagram too.";
+      form.reset();
+      setTimeout(() => { button.textContent = original; button.disabled = false; }, 2600);
+    });
+  })();
+
+  /* ---------- birthday surprise + confetti ---------- */
+  (() => {
+    const surprise = $("#surprise");
+    if (!surprise) return;
+    const canvas = $(".confetti-canvas", surprise);
+    const closeBtn = $(".surprise-close", surprise);
+    const triggers = $$("[data-surprise]");
+    let lastFocus = null, confettiRAF = null;
+
+    const open = () => {
+      lastFocus = document.activeElement;
+      surprise.hidden = false;
+      requestAnimationFrame(() => surprise.classList.add("is-open"));
+      if (closeBtn) closeBtn.focus();
+      if (!prefersReduced) burst();
+    };
+    const close = () => {
+      surprise.classList.remove("is-open");
+      if (confettiRAF) cancelAnimationFrame(confettiRAF), (confettiRAF = null);
+      const done = () => { surprise.hidden = true; surprise.removeEventListener("transitionend", done); if (lastFocus) lastFocus.focus(); };
+      surprise.addEventListener("transitionend", done);
+    };
+
+    triggers.forEach((t) => t.addEventListener("click", open));
+    if (closeBtn) closeBtn.addEventListener("click", close);
+    surprise.addEventListener("click", (e) => { if (e.target === surprise) close(); });
+    document.addEventListener("keydown", (e) => { if (!surprise.hidden && e.key === "Escape") close(); });
+
+    let buffer = "";
+    document.addEventListener("keydown", (e) => {
+      if (e.key.length !== 1) return;
+      buffer = (buffer + e.key.toLowerCase()).slice(-3);
+      if (buffer === "nia" && surprise.hidden) open();
+    });
+
+    function burst() {
+      if (!canvas || !canvas.getContext) return;
+      const ctx = canvas.getContext("2d");
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const resize = () => { canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+      resize();
+      const colors = ["#f38eb2", "#ffbe73", "#e7b53c", "#afd8d1", "#cbe8ef", "#ddd5ff", "#fff3c4"];
+      const W = window.innerWidth, H = window.innerHeight;
+      const pieces = Array.from({ length: 150 }, () => ({
+        x: W / 2 + (Math.random() - 0.5) * 80, y: H / 2 - 40,
+        vx: (Math.random() - 0.5) * 11, vy: Math.random() * -13 - 4,
+        size: 5 + Math.random() * 7, color: colors[(Math.random() * colors.length) | 0],
+        rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+        shape: Math.random() > 0.5 ? "rect" : "circle"
+      }));
+      const start = performance.now();
+      const frame = (now) => {
+        const elapsed = now - start;
+        ctx.clearRect(0, 0, W, H);
+        pieces.forEach((p) => {
+          p.vy += 0.32; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.rot += p.vr;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.globalAlpha = clamp(1 - elapsed / 3200, 0, 1); ctx.fillStyle = p.color;
+          if (p.shape === "rect") ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2); ctx.fill(); }
+          ctx.restore();
+        });
+        if (elapsed < 3400 && !surprise.hidden) confettiRAF = requestAnimationFrame(frame);
+        else ctx.clearRect(0, 0, W, H);
+      };
+      window.addEventListener("resize", resize, { once: true });
+      confettiRAF = requestAnimationFrame(frame);
+    }
+  })();
+})();
