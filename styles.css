@@ -1201,3 +1201,42 @@ html.show-intro, html.show-intro body { overflow: hidden; }
   .intro-name { -webkit-text-fill-color: var(--gold-soft); color: var(--gold-soft); }
   .intro-burst { display: none; }
 }
+
+/* ---- Korean opener (plays before the gift gate) ---- */
+.intro-korean {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 26% 16%, rgba(190, 130, 180, 0.55), transparent 60%),
+    radial-gradient(circle at 78% 84%, rgba(231, 181, 60, 0.42), transparent 55%),
+    linear-gradient(165deg, #271a39 0%, #492a48 50%, #7e4a60 100%);
+  animation: krIntro 3.3s ease forwards;
+}
+@keyframes krIntro {
+  0%   { opacity: 0; transform: scale(1.04); }
+  16%  { opacity: 1; transform: scale(1); }
+  78%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+.kr-main {
+  margin: 0;
+  font-family: "Nanum Myeongjo", "Fraunces", serif;
+  font-weight: 800;
+  color: #fff;
+  font-size: clamp(2.6rem, 13vw, 4rem);
+  letter-spacing: 0.01em;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.25);
+}
+.kr-sub { margin: 0; font-family: "Caveat", cursive; font-size: 1.5rem; color: #ffd9ea; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-korean { animation: none; opacity: 0; visibility: hidden; pointer-events: none; }
+}
