@@ -41,10 +41,13 @@
     const msgEl = intro.querySelector(".intro-message");
     const canvas = intro.querySelector(".intro-confetti");
     const muteBtn = intro.querySelector(".intro-mute");
-    const montage = intro.querySelector(".intro-montage");
-    const MONTAGE = ["1000089815.jpg", "1000090273.jpg", "1000090289.jpg", "1000091134.jpg", "1000091169.jpg"].map((f) => "assets/montage/" + f);
-    const PER = 3200; // ms each montage photo stays
-    let mtgTimer = null, mtgEnded = false;
+    // Roblox "oof" on each teleport. Drop assets/oof.mp3 in for the real sound;
+    // until then it falls back to a synthesized comedic blip.
+    const oofEl = new Audio("assets/oof.mp3");
+    oofEl.preload = "auto";
+    oofEl.volume = 0.75;
+    let oofBroken = false;
+    oofEl.addEventListener("error", () => { oofBroken = true; });
 
     nameEl.textContent = INTRO.name;
     preEl.textContent = INTRO.pre;
@@ -95,6 +98,7 @@
     const DODGES = 3;
     const taunts = ["nope 😝", "too slow, granny!", "ok fine… catch me 🥹"];
     const dodge = () => {
+      playOof();
       const pad = 16;
       const r = enterBtn.getBoundingClientRect();
       const bw = r.width, bh = r.height;
@@ -118,10 +122,10 @@
       }
     };
     if (prefersReduced) {
-      enterBtn.addEventListener("click", openMontage);
+      enterBtn.addEventListener("click", finish);
     } else {
       enterBtn.addEventListener("pointerdown", (e) => { if (!caught) { e.preventDefault(); dodge(); } });
-      enterBtn.addEventListener("click", (e) => { if (!caught) { e.preventDefault(); return; } openMontage(); });
+      enterBtn.addEventListener("click", (e) => { if (!caught) { e.preventDefault(); return; } finish(); });
     }
 
     if (muteBtn) muteBtn.addEventListener("click", () => {
@@ -218,67 +222,34 @@
       confettiRAF = requestAnimationFrame(frame);
     }
 
-    /* ---- goofy-pics montage ---- */
-    function openMontage() {
-      if (!montage) { finish(); return; }
-      showStage.classList.remove("in");
-      showStage.hidden = true;
-      montage.hidden = false;
-      requestAnimationFrame(() => montage.classList.add("in"));
-      playMusic(); // fresh swell for the montage
-      buildMontage();
+    /* ---- "oof" sound (real file if present, else a synth blip) ---- */
+    function playOof() {
+      if (!oofBroken) {
+        try {
+          oofEl.currentTime = 0;
+          const p = oofEl.play();
+          if (p && p.catch) p.catch(() => synthOof());
+          return;
+        } catch (e) {}
+      }
+      synthOof();
     }
-
-    function buildMontage() {
-      const stage = montage.querySelector(".mtg-stage");
-      const dotsWrap = montage.querySelector(".mtg-dots");
-      const hint = montage.querySelector(".mtg-hint");
-      const enter = montage.querySelector(".mtg-enter");
-      stage.innerHTML = "";
-      dotsWrap.innerHTML = "";
-      MONTAGE.forEach((src, i) => {
-        const slide = document.createElement("div");
-        slide.className = "mtg-slide";
-        const bg = document.createElement("div");
-        bg.className = "mtg-bg";
-        bg.style.backgroundImage = "url('" + src + "')";
-        const img = document.createElement("img");
-        img.className = "mtg-img";
-        img.src = src;
-        img.alt = "";
-        img.loading = i < 2 ? "eager" : "lazy";
-        slide.append(bg, img);
-        stage.appendChild(slide);
-        const dot = document.createElement("span");
-        dot.className = "mtg-dot";
-        dotsWrap.appendChild(dot);
-      });
-      const slides = Array.from(stage.querySelectorAll(".mtg-slide"));
-      const dots = Array.from(dotsWrap.querySelectorAll(".mtg-dot"));
-      let current = -1;
-      const endMontage = () => {
-        if (mtgEnded) return;
-        mtgEnded = true;
-        clearTimeout(mtgTimer);
-        if (hint) hint.hidden = true;
-        enter.hidden = false;
-        requestAnimationFrame(() => enter.classList.add("in"));
-        enter.addEventListener("click", finish, { once: true });
-      };
-      const go = (i) => {
-        if (i >= slides.length) { endMontage(); return; }
-        current = i;
-        slides.forEach((s, k) => s.classList.toggle("show", k === i));
-        dots.forEach((d, k) => d.classList.toggle("active", k === i));
-        clearTimeout(mtgTimer);
-        mtgTimer = setTimeout(() => go(i + 1), PER);
-      };
-      montage.addEventListener("click", (e) => {
-        if (e.target.closest(".mtg-enter") || mtgEnded) return;
-        clearTimeout(mtgTimer);
-        go(current + 1);
-      });
-      go(0);
+    function synthOof() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const ctx = audioCtx && audioCtx.state !== "closed" ? audioCtx : new AC();
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(250, t);
+        o.frequency.exponentialRampToValueAtTime(90, t + 0.18);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + 0.22);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t + 0.26);
+      } catch (e) {}
     }
   })();
 
