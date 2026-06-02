@@ -27,7 +27,7 @@
       lines: [
         "the world deserves to see what you make.",
         "so I made you a little home for it —",
-        "all yours. happy birthday, Aysha 💛",
+        "all yours. happy birthday, granny 💛",
       ],
     };
     /* ================================================================ */
