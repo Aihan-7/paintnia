@@ -554,7 +554,9 @@
       descEl.textContent = t.dataset.desc || "";
     };
     const open = (t) => {
-      triggers = $$("[data-lightbox]");
+      // when opened from the "all pieces" overlay, browse within it; else browse the page
+      const inAll = !!t.closest("#allworks");
+      triggers = $$("[data-lightbox]").filter((el) => !!el.closest("#allworks") === inAll);
       index = triggers.indexOf(t);
       if (index < 0) index = 0;
       lastFocus = document.activeElement;
@@ -593,6 +595,65 @@
       else if (e.key === "ArrowRight") step(1);
     });
     img.style.transition = "opacity 130ms ease";
+  })();
+
+  /* ---------- "view all" → all-pieces overlay ---------- */
+  (() => {
+    const aw = $("#allworks");
+    const btn = $("#view-all");
+    if (!aw || !btn) return;
+    const grid = $("#aw-grid", aw);
+    const closeBtn = $(".aw-close", aw);
+    let lastFocus = null;
+
+    const build = () => {
+      grid.innerHTML = "";
+      // gather every artwork on the page (hero + collection + sketchbook), skip the overlay's own
+      const pieces = $$("[data-lightbox]").filter((t) => !t.closest("#allworks"));
+      pieces.forEach((t) => {
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "aw-item";
+        cell.setAttribute("data-lightbox", "");
+        cell.dataset.src = t.dataset.src;
+        cell.dataset.title = t.dataset.title;
+        cell.dataset.medium = t.dataset.medium;
+        cell.dataset.desc = t.dataset.desc;
+        cell.setAttribute("aria-label", "View " + (t.dataset.title || "artwork") + " full size");
+        const img = document.createElement("img");
+        img.src = t.dataset.src;
+        img.alt = t.dataset.title || "";
+        img.loading = "lazy";
+        const cap = document.createElement("span");
+        cap.className = "aw-cap";
+        cap.textContent = t.dataset.title || "";
+        cell.append(img, cap);
+        grid.appendChild(cell);
+      });
+    };
+
+    const open = () => {
+      lastFocus = document.activeElement;
+      build();
+      aw.hidden = false;
+      requestAnimationFrame(() => aw.classList.add("is-open"));
+      document.body.style.overflow = "hidden";
+      closeBtn.focus();
+    };
+    const close = () => {
+      aw.classList.remove("is-open");
+      document.body.style.overflow = "";
+      const done = () => { aw.hidden = true; aw.removeEventListener("transitionend", done); if (lastFocus) lastFocus.focus(); };
+      aw.addEventListener("transitionend", done);
+    };
+
+    btn.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+    aw.addEventListener("click", (e) => { if (e.target === aw) close(); });
+    document.addEventListener("keydown", (e) => {
+      const lbEl = document.getElementById("lightbox");
+      if (!aw.hidden && e.key === "Escape" && (!lbEl || lbEl.hidden)) close();
+    });
   })();
 
   /* ---------- contact form ---------- */
