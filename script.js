@@ -94,9 +94,15 @@
     openBtn.addEventListener("click", openGift);
 
     // "step inside" runs away a few times, then lets her catch it → opens the montage
-    let dodges = 0, caught = false;
-    const DODGES = 3;
-    const taunts = ["nope 😝", "too slow, granny!", "ok fine… catch me 🥹"];
+    let step = 0, caught = false;
+    // each tap runs the next move; "settle" = hops to the centre looking catchable (a lure)
+    const MOVES = [
+      { label: "nope 😝", settle: false },
+      { label: "too slow, granny!", settle: false },
+      { label: "ok fine… catch me 🥹", settle: true },
+      { label: "SIKE 😜", settle: false },
+      { label: "okok for real… catch me 🥹", settle: true, last: true },
+    ];
     const dodge = () => {
       playOof();
       const pad = 16;
@@ -109,17 +115,19 @@
         enterBtn.style.top = r.top + "px";
         void enterBtn.offsetWidth; // reflow so the first move glides too
       }
-      dodges++;
-      enterBtn.textContent = taunts[Math.min(dodges, taunts.length) - 1];
-      if (dodges >= DODGES) {
-        caught = true;
+      const m = MOVES[Math.min(step, MOVES.length - 1)];
+      enterBtn.textContent = m.label;
+      if (m.settle) {
         enterBtn.classList.add("caught");
         enterBtn.style.left = Math.max(pad, (window.innerWidth - bw) / 2) + "px";
         enterBtn.style.top = window.innerHeight * 0.6 + "px";
       } else {
+        enterBtn.classList.remove("caught");
         enterBtn.style.left = pad + Math.random() * Math.max(1, window.innerWidth - bw - pad * 2) + "px";
         enterBtn.style.top = window.innerHeight * 0.22 + Math.random() * Math.max(1, window.innerHeight * 0.5 - bh) + "px";
       }
+      if (m.last) caught = true; // the next tap finally reveals the site
+      step++;
     };
     if (prefersReduced) {
       enterBtn.addEventListener("click", finish);
