@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All pieces · thepaint.nia</title>
+    <meta name="description" content="Every painting, study, and custom piece by Aysha Nia — @thepaint.nia." />
+    <meta name="theme-color" content="#fff9f3" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='%23f38eb2'%3E%3Ccircle cx='16' cy='7' r='5'/%3E%3Ccircle cx='16' cy='25' r='5'/%3E%3Ccircle cx='7' cy='16' r='5'/%3E%3Ccircle cx='25' cy='16' r='5'/%3E%3C/g%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e7b53c'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Caveat:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=6" />
+  </head>
+  <body>
+    <div class="ambient-layer" aria-hidden="true"></div>
+
+    <div class="page-shell">
+      <header class="top-banner">
+        <span class="banner-track">
+          <span>Original paintings</span><span class="dot">✦</span>
+          <span>gold-leaf florals</span><span class="dot">✦</span>
+          <span>custom commissions</span><span class="dot">✦</span>
+          <span>by @thepaint.nia</span><span class="dot">✦</span>
+          <span>Original paintings</span><span class="dot">✦</span>
+          <span>gold-leaf florals</span><span class="dot">✦</span>
+          <span>custom commissions</span><span class="dot">✦</span>
+          <span>by @thepaint.nia</span><span class="dot">✦</span>
+        </span>
+      </header>
+
+      <nav class="site-nav">
+        <a class="brand" href="index.html" aria-label="thepaint.nia home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-text">
+            <strong>thepaint.nia</strong>
+            <span>original art &amp; custom pieces</span>
+          </span>
+        </a>
+        <div class="nav-links">
+          <a href="index.html#collection">Collection</a>
+          <a href="index.html#commissions">Commissions</a>
+          <a href="index.html#story">Story</a>
+          <a href="index.html#contact">Contact</a>
+        </div>
+        <a class="nav-button" href="index.html">← Home</a>
+      </nav>
+
+      <main>
+        <section class="collection-section">
+          <div class="section-heading">
+            <p class="eyebrow">the full collection</p>
+            <h2>All pieces</h2>
+            <p>Every painting, study, and custom piece in one place. Tap any one to see it up close.</p>
+          </div>
+          <div class="aw-grid" id="gallery-grid">
+            <p class="gallery-loading">Loading pieces…</p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div>
+          <strong>thepaint.nia</strong>
+          <p>Original art, sketches &amp; custom commissions.</p>
+        </div>
+        <div class="footer-links">
+          <a href="index.html">Home</a>
+          <a href="index.html#commissions">Commissions</a>
+          <a href="https://instagram.com/thepaint.nia" target="_blank" rel="noreferrer">@thepaint.nia</a>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ===== Lightbox ===== -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Artwork viewer" hidden>
+      <button class="lb-close" type="button" aria-label="Close viewer">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <button class="lb-nav lb-prev" type="button" aria-label="Previous artwork">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <figure class="lb-figure">
+        <img class="lb-image" src="" alt="" />
+        <figcaption class="lb-caption">
+          <h3 class="lb-title"></h3>
+          <p class="lb-medium"></p>
+          <p class="lb-desc"></p>
+          <a class="button button-primary lb-cta" href="index.html#contact">Enquire about this piece</a>
+        </figcaption>
+      </figure>
+      <button class="lb-nav lb-next" type="button" aria-label="Next artwork">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js?v=6"></script>
+    <script src="gallery.js?v=6"></script>
+    <script>
+      (() => {
+        "use strict";
+        const $ = (s, c = document) => c.querySelector(s);
+        const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
+        const cfg = window.NIA_CONFIG || {};
+        const cloudReady = !!(
+          cfg.supabaseUrl && cfg.supabaseAnonKey &&
+          !/YOUR-PROJECT|YOUR-ANON/.test(cfg.supabaseUrl + cfg.supabaseAnonKey) && window.supabase
+        );
+        // the hero piece (lives on the homepage, included here so "all" really means all)
+        const HERO = { title: "Blue Bloom", medium: "Acrylic + gold leaf on canvas", description: "Hand-painted blooms with raised metallic-gold outlines over a dreamy blue wash.", image: "assets/blue-bloom.jpg", price: "", status: "available" };
+        const norm = (p) => ({
+          title: p.title || "Untitled", medium: p.medium || "", description: p.description || "",
+          image: p.image_url || p.image || "", price: p.price || "",
+          status: p.status === "sold" ? "sold" : "available",
+        });
+
+        function render(pieces) {
+          const grid = $("#gallery-grid");
+          grid.innerHTML = "";
+          pieces.filter((p) => p.image).forEach((p) => {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "aw-item"; b.setAttribute("data-lightbox", "");
+            b.dataset.src = p.image; b.dataset.title = p.title; b.dataset.medium = p.medium; b.dataset.desc = p.description;
+            b.setAttribute("aria-label", "View " + (p.title || "artwork") + " full size");
+            const img = document.createElement("img"); img.src = p.image; img.alt = p.title || ""; img.loading = "lazy";
+            if (p.status === "sold") { const s = document.createElement("span"); s.className = "sold-badge"; s.textContent = "Sold"; b.appendChild(s); }
+            const cap = document.createElement("span"); cap.className = "aw-cap"; cap.textContent = p.title || "";
+            b.append(img, cap);
+            grid.appendChild(b);
+          });
+        }
+
+        async function load() {
+          let pieces = Array.isArray(window.NIA_GALLERY) ? window.NIA_GALLERY.map(norm) : [];
+          if (cloudReady) {
+            try {
+              const c = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+              const { data, error } = await c.from("pieces").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+              if (!error && Array.isArray(data)) pieces = data.map(norm);
+            } catch (e) {}
+          }
+          render([HERO, ...pieces]);
+        }
+        load();
+
+        // ---- lightbox ----
+        const lb = $("#lightbox");
+        const img = $(".lb-image", lb), t1 = $(".lb-title", lb), t2 = $(".lb-medium", lb), t3 = $(".lb-desc", lb);
+        const cl = $(".lb-close", lb), pv = $(".lb-prev", lb), nx = $(".lb-next", lb), cta = $(".lb-cta", lb);
+        let trig = [], i = 0, lastF = null;
+        const draw = () => { const t = trig[i]; if (!t) return; img.src = t.dataset.src; img.alt = t.dataset.title || ""; t1.textContent = t.dataset.title || ""; t2.textContent = t.dataset.medium || ""; t3.textContent = t.dataset.desc || ""; };
+        const open = (t) => { trig = $$("[data-lightbox]"); i = trig.indexOf(t); if (i < 0) i = 0; lastF = document.activeElement; draw(); lb.hidden = false; requestAnimationFrame(() => lb.classList.add("is-open")); document.body.style.overflow = "hidden"; cl.focus(); };
+        const close = () => { lb.classList.remove("is-open"); document.body.style.overflow = ""; const d = () => { lb.hidden = true; lb.removeEventListener("transitionend", d); if (lastF) lastF.focus(); }; lb.addEventListener("transitionend", d); };
+        const step = (d) => { if (!trig.length) return; i = (i + d + trig.length) % trig.length; img.style.opacity = "0"; setTimeout(() => { draw(); img.style.opacity = "1"; }, 130); };
+        document.addEventListener("click", (e) => { const t = e.target.closest("[data-lightbox]"); if (t) { e.preventDefault(); open(t); } });
+        cl.addEventListener("click", close); pv.addEventListener("click", () => step(-1)); nx.addEventListener("click", () => step(1)); cta.addEventListener("click", close);
+        lb.addEventListener("click", (e) => { if (e.target === lb) close(); });
+        document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") step(-1); else if (e.key === "ArrowRight") step(1); });
+        img.style.transition = "opacity 130ms ease";
+      })();
+    </script>
+  </body>
+</html>
