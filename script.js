@@ -124,8 +124,12 @@
     if (prefersReduced) {
       enterBtn.addEventListener("click", finish);
     } else {
-      enterBtn.addEventListener("pointerdown", (e) => { if (!caught) { e.preventDefault(); dodge(); } });
-      enterBtn.addEventListener("click", (e) => { if (!caught) { e.preventDefault(); return; } finish(); });
+      // click fires reliably on every device; dodge until caught, then reveal
+      enterBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (caught) { finish(); return; }
+        dodge();
+      });
     }
 
     if (muteBtn) muteBtn.addEventListener("click", () => {

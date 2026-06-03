@@ -1152,6 +1152,7 @@ html.show-intro, html.show-intro body { overflow: hidden; }
   position: absolute; top: 32%; left: 50%;
   width: 12px; height: 12px; border-radius: 50%;
   transform: translate(-50%, -50%);
+  pointer-events: none;
   background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(255,231,162,0.6) 30%, transparent 70%);
 }
 .intro-show.in .intro-burst { animation: introBurst 1s ease-out forwards; }
