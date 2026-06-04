@@ -1273,3 +1273,57 @@ html.show-intro, html.show-intro body { overflow: hidden; }
   padding: 12px 12px 14px; font-family: "Fraunces", serif; font-size: 1.02rem;
   color: var(--ink); text-align: left;
 }
+
+/* ===== blow out the candles (intro) ===== */
+.intro-cake {
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  opacity: 0; transition: opacity 500ms var(--ease-soft);
+}
+.intro-cake.in { opacity: 1; }
+.intro-cake[hidden] { display: none; }
+
+.cake-eyebrow { margin: 0; font-family: "Caveat", cursive; font-size: 1.75rem; color: #ffd9ea; }
+.cake { position: relative; width: 240px; max-width: 72vw; }
+.cake-svg { width: 100%; display: block; filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.25)); }
+
+.candles {
+  position: absolute; left: 50%; bottom: 71%; transform: translateX(-50%);
+  display: flex; gap: 16px; align-items: flex-end;
+}
+.candle {
+  position: relative; width: 30px; height: 56px;
+  border: 0; background: none; padding: 0; cursor: pointer;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.candle .stick {
+  width: 8px; height: 30px; border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #f49ac0 0 5px, #fff 5px 10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+.candle .flame {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  width: 13px; height: 19px; border-radius: 50% 50% 50% 50% / 62% 62% 40% 40%;
+  background: radial-gradient(ellipse at 50% 75%, rgba(255,255,255,0.55) 0 30%, transparent 55%), linear-gradient(#fff1a8, #ffb13c 55%, #ff7a3c);
+  box-shadow: 0 0 14px 5px rgba(255, 165, 60, 0.7);
+  transform-origin: 50% 100%;
+  animation: flicker 0.34s ease-in-out infinite alternate;
+}
+@keyframes flicker {
+  from { transform: translateX(-50%) scaleY(1) rotate(-4deg); opacity: 0.9; }
+  to   { transform: translateX(-50%) scaleY(1.14) rotate(4deg); opacity: 1; }
+}
+.candle .smoke {
+  position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%);
+  width: 8px; height: 8px; border-radius: 50%; background: rgba(200, 200, 210, 0.55); opacity: 0;
+}
+.candle.out .flame {
+  animation: none; opacity: 0; transform: translateX(-50%) scale(0.4); box-shadow: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.candle.out .smoke { animation: smokeRise 1s ease-out forwards; }
+@keyframes smokeRise {
+  0% { opacity: 0.6; transform: translate(-50%, 0) scale(0.6); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1.7); }
+}
+.cake-hint { margin: 0; font-size: 0.95rem; color: rgba(255, 255, 255, 0.85); text-align: center; }
+.cake-hint span { opacity: 0.7; font-size: 0.85rem; }

@@ -41,6 +41,9 @@
     const msgEl = intro.querySelector(".intro-message");
     const canvas = intro.querySelector(".intro-confetti");
     const muteBtn = intro.querySelector(".intro-mute");
+    const cakeStage = intro.querySelector(".intro-cake");
+    const candlesWrap = intro.querySelector("#candles");
+    const cakeHint = intro.querySelector("#cake-hint");
     // Roblox "oof" on each teleport. Drop assets/oof.mp3 in for the real sound;
     // until then it falls back to a synthesized comedic blip.
     const oofEl = new Audio("assets/oof.mp3");
@@ -53,6 +56,7 @@
     preEl.textContent = INTRO.pre;
 
     let audioCtx = null, masterGain = null, muted = false, confettiRAF = null, opened = false;
+    let litCount = 0, blownDone = false, micStream = null;
     const MASTER_VOL = 0.16;
     const vibrate = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
@@ -64,18 +68,13 @@
       setTimeout(() => { root.classList.remove("show-intro"); intro.remove(); }, 850);
     };
 
-    const openGift = () => {
-      if (opened) return;
-      opened = true;
-      openBtn.disabled = true;
-      vibrate([0, 45, 60, 45, 90, 30]);
-      gate.classList.add("gone");
+    // the name + message reveal (runs after the candles are blown out)
+    const startReveal = () => {
+      if (cakeStage) { cakeStage.classList.remove("in"); cakeStage.hidden = true; }
       showStage.hidden = false;
       requestAnimationFrame(() => showStage.classList.add("in"));
       if (!prefersReduced) startConfetti();
-      playMusic();
-      setTimeout(() => vibrate([0, 25, 35, 25]), 650);
-
+      setTimeout(() => vibrate([0, 25, 35, 25]), 200);
       INTRO.lines.forEach((t, i) => {
         const p = document.createElement("p");
         p.className = "intro-line";
@@ -88,7 +87,90 @@
         enterBtn.hidden = false;
         requestAnimationFrame(() => enterBtn.classList.add("in"));
       }, enterDelay);
+    };
+
+    /* ---- blow out the candles (mic if allowed, tap as fallback) ---- */
+    function buildCandles() {
+      if (!candlesWrap) { startReveal(); return; }
+      const N = 3;
+      candlesWrap.innerHTML = "";
+      litCount = N;
+      for (let i = 0; i < N; i++) {
+        const c = document.createElement("button");
+        c.type = "button";
+        c.className = "candle";
+        c.setAttribute("aria-label", "candle");
+        c.innerHTML = '<span class="flame"></span><span class="smoke"></span><span class="stick"></span>';
+        c.addEventListener("click", () => extinguish(c));
+        candlesWrap.appendChild(c);
+      }
+    }
+    function extinguish(c) {
+      if (!c || c.classList.contains("out")) return;
+      c.classList.add("out");
+      litCount--;
+      vibrate(18);
+      if (litCount <= 0 && !blownDone) onBlown();
+    }
+    function blowOne() {
+      const lit = candlesWrap && candlesWrap.querySelector(".candle:not(.out)");
+      if (lit) extinguish(lit);
+    }
+    function onBlown() {
+      blownDone = true;
+      if (cakeHint) cakeHint.textContent = "✨ make it a good one ✨";
+      if (!prefersReduced) startConfetti();
+      vibrate([0, 40, 60, 40]);
+      stopMic();
+      setTimeout(startReveal, 1500);
+    }
+    function stopMic() {
+      if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
+    }
+    function setupBlow() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        micStream = stream;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const mctx = new AC();
+        const src = mctx.createMediaStreamSource(stream);
+        const an = mctx.createAnalyser();
+        an.fftSize = 1024;
+        src.connect(an);
+        const buf = new Float32Array(an.fftSize);
+        let frames = 0, cool = 0;
+        const loop = () => {
+          if (blownDone) { try { mctx.close(); } catch (e) {} return; }
+          an.getFloatTimeDomainData(buf);
+          let sum = 0;
+          for (let k = 0; k < buf.length; k++) sum += buf[k] * buf[k];
+          const rms = Math.sqrt(sum / buf.length);
+          if (cool > 0) cool--;
+          if (rms > 0.14) { frames++; if (frames >= 3 && cool === 0) { blowOne(); cool = 16; frames = 0; } }
+          else frames = 0;
+          requestAnimationFrame(loop);
+        };
+        loop();
+      }).catch(() => {
+        if (cakeHint) cakeHint.innerHTML = "tap the candles to blow them out 🌬️";
+      });
+    }
+
+    const openGift = () => {
+      if (opened) return;
+      opened = true;
+      openBtn.disabled = true;
+      vibrate([0, 45, 60, 45, 90, 30]);
+      gate.classList.add("gone");
+      if (cakeStage) {
+        cakeStage.hidden = false;
+        requestAnimationFrame(() => cakeStage.classList.add("in"));
+      }
+      playMusic();
       if (muteBtn) muteBtn.hidden = false;
+      buildCandles();
+      setupBlow();
     };
 
     openBtn.addEventListener("click", openGift);
