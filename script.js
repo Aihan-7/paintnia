@@ -56,7 +56,7 @@
     preEl.textContent = INTRO.pre;
 
     let audioCtx = null, masterGain = null, muted = false, confettiRAF = null, opened = false;
-    let litCount = 0, blownDone = false, micStream = null;
+    let litCount = 0, blownDone = false;
     const MASTER_VOL = 0.16;
     const vibrate = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
@@ -89,7 +89,28 @@
       }, enterDelay);
     };
 
-    /* ---- blow out the candles (mic if allowed, tap as fallback) ---- */
+    /* ---- blow out the candles (tap) ---- */
+    function whoosh() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const ctx = audioCtx && audioCtx.state !== "closed" ? audioCtx : new AC();
+        const dur = 0.26, t = ctx.currentTime;
+        const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+        const d = buffer.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; // white noise
+        const src = ctx.createBufferSource(); src.buffer = buffer;
+        const filt = ctx.createBiquadFilter(); filt.type = "bandpass"; filt.Q.value = 0.8;
+        filt.frequency.setValueAtTime(1100, t);
+        filt.frequency.exponentialRampToValueAtTime(280, t + dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.5, t + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+        src.connect(filt); filt.connect(g); g.connect(ctx.destination);
+        src.start(t); src.stop(t + dur + 0.03);
+      } catch (e) {}
+    }
     function buildCandles() {
       if (!candlesWrap) { startReveal(); return; }
       const N = 3;
@@ -108,53 +129,17 @@
     function extinguish(c) {
       if (!c || c.classList.contains("out")) return;
       c.classList.add("out");
+      whoosh();
       litCount--;
       vibrate(18);
       if (litCount <= 0 && !blownDone) onBlown();
-    }
-    function blowOne() {
-      const lit = candlesWrap && candlesWrap.querySelector(".candle:not(.out)");
-      if (lit) extinguish(lit);
     }
     function onBlown() {
       blownDone = true;
       if (cakeHint) cakeHint.textContent = "✨ make it a good one ✨";
       if (!prefersReduced) startConfetti();
       vibrate([0, 40, 60, 40]);
-      stopMic();
       setTimeout(startReveal, 1500);
-    }
-    function stopMic() {
-      if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
-    }
-    function setupBlow() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        micStream = stream;
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        const mctx = new AC();
-        const src = mctx.createMediaStreamSource(stream);
-        const an = mctx.createAnalyser();
-        an.fftSize = 1024;
-        src.connect(an);
-        const buf = new Float32Array(an.fftSize);
-        let frames = 0, cool = 0;
-        const loop = () => {
-          if (blownDone) { try { mctx.close(); } catch (e) {} return; }
-          an.getFloatTimeDomainData(buf);
-          let sum = 0;
-          for (let k = 0; k < buf.length; k++) sum += buf[k] * buf[k];
-          const rms = Math.sqrt(sum / buf.length);
-          if (cool > 0) cool--;
-          if (rms > 0.14) { frames++; if (frames >= 3 && cool === 0) { blowOne(); cool = 16; frames = 0; } }
-          else frames = 0;
-          requestAnimationFrame(loop);
-        };
-        loop();
-      }).catch(() => {
-        if (cakeHint) cakeHint.innerHTML = "tap the candles to blow them out 🌬️";
-      });
     }
 
     const openGift = () => {
@@ -170,7 +155,6 @@
       playMusic();
       if (muteBtn) muteBtn.hidden = false;
       buildCandles();
-      setupBlow();
     };
 
     openBtn.addEventListener("click", openGift);
