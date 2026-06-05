@@ -667,9 +667,15 @@
     if (!form) return;
     const hint = $(".form-hint", form);
     const button = form.querySelector('button[type="submit"]');
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = form.querySelector('input[name="email"]');
+      const name = form.querySelector('input[name="name"]');
+      if (name && !name.value.trim()) {
+        if (hint) hint.textContent = "Please add your name 🌸";
+        name.focus();
+        return;
+      }
       if (email && !email.checkValidity()) {
         if (hint) hint.textContent = "Please add a valid email so I can reply 💌";
         email.focus();
@@ -677,11 +683,22 @@
       }
       if (!button) return;
       const original = button.textContent;
-      button.textContent = "Sent — thank you!";
       button.disabled = true;
-      if (hint) hint.textContent = "Got it! For the fastest reply, DM @thepaint.nia on Instagram too.";
-      form.reset();
-      setTimeout(() => { button.textContent = original; button.disabled = false; }, 2600);
+      button.textContent = "Sending…";
+      if (hint) { hint.style.color = ""; hint.textContent = ""; }
+      try {
+        const res = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { Accept: "application/json" } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.message || "send failed");
+        button.textContent = "Sent — thank you!";
+        if (hint) hint.textContent = "Got it! For the fastest reply, DM @thepaint.nia on Instagram too.";
+        form.reset();
+        setTimeout(() => { button.textContent = original; button.disabled = false; }, 3000);
+      } catch (err) {
+        button.textContent = original;
+        button.disabled = false;
+        if (hint) { hint.style.color = "#c0436a"; hint.textContent = "Hmm, that didn't send — try again, or DM @thepaint.nia on Instagram."; }
+      }
     });
   })();
 

@@ -73,7 +73,7 @@
       href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=9" />
     <script>
       // Birthday reveal: the cinematic intro only plays when the site is opened
       // via the secret link  paintnia.shop/?gift  — so regular shop visitors never see it.
@@ -492,7 +492,11 @@
               @thepaint.nia
             </a>
           </div>
-          <form class="contact-form" novalidate>
+          <form class="contact-form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+            <input type="hidden" name="access_key" value="03289536-82db-4748-aeb7-431802b93584" />
+            <input type="hidden" name="subject" value="New art inquiry — paintnia.shop" />
+            <input type="hidden" name="from_name" value="thepaint.nia website" />
+            <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none !important" />
             <label>
               Your name
               <input type="text" name="name" placeholder="Your name" autocomplete="name" />
@@ -580,8 +584,8 @@
 
     <!-- Cloud (live updates) + offline fallback list, both managed in studio.html -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js?v=8"></script>
-    <script src="gallery.js?v=8"></script>
-    <script src="script.js?v=8"></script>
+    <script src="config.js?v=9"></script>
+    <script src="gallery.js?v=9"></script>
+    <script src="script.js?v=9"></script>
   </body>
 </html>
